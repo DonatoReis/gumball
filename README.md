@@ -1,9 +1,9 @@
-# Gumbal
+# Gumball
 
 <p align="center" dir="auto">
   <a target="_blank" rel="noopener noreferrer" href="https://imgbb.com/"><img src="https://i.ibb.co/G5SgQ0T/68747470733a2f2f692e6962622e636f2f444732566273682f616e6772792d6d6f6c652d6c6f676f2d3130333232342d3336.png" alt="angry-mole-logo-103224-369" border="0" height="240" style="max-width: 100%;"></a>
   <br>
-  <strong>Gumbal - An automation tool to install the most popular tools for bug bounty or pentesting</strong> 
+  <strong>Gumball - An automation tool to install the most popular tools for bug bounty or pentesting</strong> 
   <br><br>
   <strong>Recode The Copyright Is Not Make You A Coder</strong>
 </p>  
@@ -40,7 +40,7 @@ Example Usage:
 ./install [-f] [-l] [tool] [-h]
 
 DESCRIPTION
-  Gumbal is a based script for automatize installation
+  Gumball is a based script for automatize installation
 
 OPTIONS
   General options
@@ -88,14 +88,14 @@ List1|List2|List3|List4|List5|List6|List7|List8
 #### cURL, Recommends installing in root mode
 
 ```sh
-curl -sL https://github.com/DonatoReis/gumbal/raw/main/install.sh | sudo bash
+curl -sL https://github.com/DonatoReis/gumball/raw/main/install.sh | sudo bash
 
 ```
 
 #### **Installation mode with git clone**
 ```sh
-git clone https://github.com/DonatoReis/gumbal
-sudo gumbal/install.sh
+git clone https://github.com/DonatoReis/gumball
+sudo gumball/install.sh
 ```
 
 #### **Tools Recon DNS**
