@@ -1,78 +1,64 @@
 #!/usr/bin/env bash
-version=1.0.16
-usage() {
-  usage="  Usage: $basename [OPTIONS]
 
-DESCRIPTION
-  Arno is a based script for automatize installation
+set -euo pipefail
 
-OPTIONS
-  General options
-    -h,--help,help
-    -l,--list
-    -v,--version
-    -f,--force-update"
-  printf "$usage\n"
-}
+readonly version='1.0.17a'
 
-# ANSI Colors
 load_ansi_colors() {
-  # @C FG Color
-  #    |-- foreground color
-  export CReset=$'\e[m' CFGBlack='\e[30m' CFGRed='\e[31m' CFGGreen='\e[32m' \
-    CFGYellow='\e[33m' CFGBlue='\e[34m' CFGPurple='\e[35m' CFGCyan='\e[36m' \
-    CFGWhite='\e[37m'
-  # @C BG Color
-  #    |-- background color
-  export CBGBlack='\e[40m' CBGRed='\e[41m' CBGGreen='\e[42m' CBGYellow='\e[43m' \
-    CBGBlue='\e[44m' CBGPurple='\e[45m' CBGCyan='\e[46m' CBGWhite='\e[47m'
-  # @C Attribute
-  #    |-- text attribute
-  export CBold='\e[1m' CFaint='\e[2m' CItalic='\e[3m' CUnderline='\e[4m' \
-    CSBlink='\e[5m' CFBlink='\e[6m' CReverse='\e[7m' CConceal='\e[8m' \
-    CCrossed='\e[9m' CDoubleUnderline='\e[21m'
+  # Use tput to set colors
+  readonly CReset=$(tput sgr0)
+  readonly CFGBlack=$(tput setaf 0)
+  readonly CFGRed=$(tput setaf 1)
+  readonly CFGGreen=$(tput setaf 2)
+  readonly CFGYellow=$(tput setaf 3)
+  readonly CFGBlue=$(tput setaf 4)
+  readonly CFGPurple=$(tput setaf 5)
+  readonly CFGCyan=$(tput setaf 6)
+  readonly CFGWhite=$(tput setaf 7)
 }
 
 debug() {
-  if [ -x "$APP_DEBUG" ] && $APP_DEBUG ||
-     [[ ${APP_DEBUG,,} == @(true|1|on) ]]; then
-    echo -e "<!--\n [+] $(cat -A <<< "$*")\n-->"
+  if [[ -n "$APP_DEBUG" ]]; then
+    printf "<!--\n[+] %s\n-->\n" "$*"
   fi
 }
 
 in_array() {
-  local needle=$1 haystack
-  printf -v haystack '%s|' "${@:2}"
-  [[ "$needle" == @(${haystack%|}) ]]
+  local needle=$1
+  local haystack=("${@:2}")
+  [[ "${haystack[*]}" == *"$needle"* ]]
 }
 
 print_message() {
-  if [[ $* ]]; then
-    message_fmt="\n\n${CBold}${CFGCyan}〔${CFGWhite}✓${CFGCyan}〕%s${CReset}\n"
-    printf "$message_fmt" "$*"
+  if [[ -n "$*" ]]; then
+    local message_fmt="\n\n${CFGGreen}〔${CFGWhite}✓${CFGGreen}〕%s${CReset}\n"
+    printf -- "$message_fmt" "$*"
   fi
 }
 
-lolcat() {
-  lolcat=/usr/games/lolcat
-  if type -t $lolcat >/dev/null; then $lolcat; else cat; fi <<< "$1"
+progressbar() {
+  local progressbar="$workdir/vendor/NRZCode/progressbar/ProgressBar.sh"
+  if [[ -x "$progressbar" && -z "$APP_DEBUG" ]]; then
+    "$progressbar" "$@"
+  else
+    cat
+  fi
 }
 
 banner() {
   lolcat "
-   █████████   ███████████   ██████   █████    ███████ ®
-  ███░░░░░███ ░░███░░░░░███ ░░██████ ░░███   ███░░░░░███
- ░███    ░███  ░███    ░███  ░███░███ ░███  ███     ░░███
- ░███████████  ░██████████   ░███░░███░███ ░███      ░███
- ░███░░░░░███  ░███░░░░░███  ░███ ░░██████ ░███      ░███
- ░███    ░███  ░███    ░███  ░███  ░░█████ ░░███     ███
- █████   █████ █████   █████ █████  ░░█████ ░░░███████░
-░░░░░   ░░░░░ ░░░░░   ░░░░░ ░░░░░    ░░░░░    ░░░░░░░
-                                       ➥ version: $version
+  _______  __    __  .___  ___. .______        ___       __       __      
+ /  _____||  |  |  | |   \/   | |   _  \      /   \     |  |     |  |     
+|  |  __  |  |  |  | |  \  /  | |  |_)  |    /  ^  \    |  |     |  |     
+|  | |_ | |  |  |  | |  |\/|  | |   _  <    /  /_\  \   |  |     |  |     
+|  |__| | |  `--'  | |  |  |  | |  |_)  |  /  _____  \  |  `----.|  `----.
+ \______|  \______/  |__|  |__| |______/  /__/     \__\ |_______||_______|
 
-            A Reconaissance Tool's Collection.
+                                       ➥ versão: $version
 
-📥 Discord Community
+            Uma coleção de ferramentas de reconhecimento.
+
+📥 Comunidade do Discord
 
  〔https://discord.io/thekrakenhacker〕
 🛠  Recode The Copyright Is Not Make You A Coder Dude
@@ -80,14 +66,13 @@ banner() {
 }
 
 system_update() {
-  if [[ ! $is_updated ]]; then
+  if [[! "$is_updated" ]]; then
     apt update && is_updated=1
   fi
 }
-export -f system_update
 
 system_upgrade() {
-  print_message 'Updating system'
+  print_message 'Atualizando sistema'
   apt -y upgrade <<< 'SYSTEM_UPGRADE'
   apt -y autoremove
   apt -y autoclean
@@ -95,7 +80,7 @@ system_upgrade() {
 
 check_dependencies() {
   (
-    srcdir="$srcdir/DonatoReis/arno/vendor"
+    srcdir="$srcdir/DonatoReis/gumball/vendor"
     git_install 'https://github.com/NRZCode/progressbar'
     git_install 'https://github.com/NRZCode/bash-ini-parser'
   )
@@ -103,10 +88,10 @@ check_dependencies() {
 }
 
 check_inifile() {
-  if [[ ! -r "$inifile" ]]; then
+  if [[! -r "$inifile" ]]; then
     [[ -r "$workdir/package-dist.ini" ]] &&
       cp "$workdir"/package{-dist,}.ini ||
-      wget -qO "$workdir/package.ini" https://github.com/DonatoReis/arno/raw/master/package-dist.ini
+      wget -qO "$workdir/package.ini" https://github.com/DonatoReis/gumball/raw/master/package-dist.ini
   fi
   [[ -r "$inifile" ]] || exit 1
 }
@@ -115,23 +100,23 @@ init_install() {
   export DEBIAN_FRONTEND=noninteractive
   mkdir -p "$srcdir"
   system_update
-  if [[ $force_update == 1 ]]; then
+  if [[ "$force_update" == 1 ]]; then
     apt -f install
     apt --fix-broken install -y
     dpkg --configure -a
-    rm -f $HOME/.local/._first_install.lock
+    rm -f "$HOME/.local/._first_install.lock"
   fi
   # REQUIREMENTS
-  print_message 'Complete tool to install and configure various tools for pentesting.'
-  printf "\n${CBold}${CFGWhite}◖»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»${CReset}\n\n"
-  if [[ ! -f $HOME/.local/._first_install.lock ]]; then
-    packages='python3-pip apt-transport-https curl libcurl4-openssl-dev libssl-dev jq ruby-full libcurl4-openssl-dev ruby libxml2 libxml2-dev libxslt1-dev ruby-dev dkms build-essential libgmp-dev hcxdumptool zlib1g-dev perl zsh fonts-powerline libio-socket-ssl-perl libdbd-sqlite3-perl libclass-dbi-perl libio-all-lwp-perl libparallel-forkmanager-perl libredis-perl libalgorithm-combinatorics-perl gem git cvs subversion bzr mercurial libssl-dev libffi-dev python-dev-is-python3 ruby-ffi-yajl libldns-dev rename docker.io parsero apache2 ssh tor privoxy proxychains4 aptitude synaptic lolcat yad dialog golang-go graphviz virtualenv reaver bats openssl cargo cmake'
-    url='https://go.dev/dl/go1.22.2.linux-amd64.tar.gz'
+  print_message 'Ferramenta completa para instalar e configurar várias ferramentas para pentesting.'
+  printf "\n${CFGGreen}◖»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»${CReset}\n\n"
+  if [[! -f "$HOME/.local/._first_install.lock" ]]; then
+    local packages='python3-pip apt-transport-https curl libcurl4-openssl-dev libssl-dev jq ruby-full libcurl4-openssl-dev ruby libxml2 libxml2-dev libxslt1-dev ruby-dev dkms build-essential libgmp-dev hcxdumptool zlib1g-dev perl zsh fonts-powerline libio-socket-ssl-perl libdbd-sqlite3-perl libclass-dbi-perl libio-all-lwp-perl libparallel-forkmanager-perl libredis-perl libalgorithm-combinatorics-perl gem git cvs subversion bzr mercurial libssl-dev libffi-dev python-dev-is-python3 ruby-ffi-yajl libldns-dev rename docker.io parsero apache2 ssh tor privoxy proxychains4 aptitude synaptic lolcat yad dialog golang-go graphviz virtualenv reaver bats openssl cargo cmake'
+    local url='https://go.dev/dl/go1.22.2.linux-amd64.tar.gz'
     wget -O "/tmp/${url##*/}" "$url"
     rm -rf /usr/local/go
     tar -C /usr/local -xzf "/tmp/${url##*/}"
     ln -sf /usr/local/go/bin/go /usr/local/bin/go
-    case $distro in
+    case "$distro" in
       Ubuntu)
         packages+=' chromium-browser whois'
         ;;
@@ -146,27 +131,19 @@ init_install() {
     gem install typhoeus opt_parse_validator blunder wpscan
     cargo install ppfuzz
     mkdir -p "$HOME/.local"
-    > $HOME/.local/._first_install.lock
+    > "$HOME/.local/._first_install.lock"
   fi
 }
 
 get_distro() {
-  if type -t lsb_release &>/dev/bull; then
+  if type -t lsb_release &>/dev/null; then
     distro=$(lsb_release -is)
-  elif [[ -f /etc/os-release || \
-          -f /usr/lib/os-release || \
-          -f /etc/openwrt_release || \
-          -f /etc/lsb-release ]]; then
+  elif [[ -f /etc/os-release || -f /usr/lib/os-release || -f /etc/openwrt_release || -f /etc/lsb-release ]]; then
     for file in /usr/lib/os-release  /etc/{os-,openwrt_,lsb-}release; do
       source "$file" && break
     done
     distro="${NAME:-${DISTRIB_ID}} ${VERSION_ID:-${DISTRIB_RELEASE}}"
   fi
-}
-
-progressbar() {
-  local progressbar="$workdir/vendor/NRZCode/progressbar/ProgressBar.sh"
-  [[ -x "$progressbar" && -z $APP_DEBUG ]] && $progressbar "$@" || cat
 }
 
 cfg_listsections() {
@@ -192,23 +169,25 @@ git_install() {
     : "${repo%/*}"
     local vendor=${_##*/}
     export installdir="$srcdir/$vendor/${repo##*/}"
+    if [[! -d "$installdir" ]]; then
+      mkdir -p "$installdir"
+    fi
     if [[ -d "$installdir/.git" ]]; then
-      git -C "$installdir" pull $GIT_OPT --all
-    elif [[ ! -d "$installdir" ]]; then
-      git clone $GIT_OPT "$repo" "$installdir"
+      git -C "$installdir" pull --ff-only $GIT_OPT --all
+    else
+      git clone --depth 1 $GIT_OPT "$repo" "$installdir"
     fi | progressbar -s normal -m "${repo##*/}: Cloning repository"
     if [[ $app ]]; then
       [[ -f "$installdir/$app" ]] && chmod +x "$installdir/$app"
       bin="$bindir/${app##*/}"
       ln -sf "$installdir/$app" "$bin"
-      ln -sf "$installdir/$app" "${bin%.*}"
-    fi
-    if [[ -r "$installdir/requirements.txt" ]]; then
-      result=$(cd "$installdir";pip3 install -q -r requirements.txt 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Python requirements"
-    fi
-    if [[ -r "$installdir/setup.py" ]]; then
-      result=$(cd "$installdir";python3 setup.py -q install 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Installing setup.py"
-    fi
+        ln -sf "$installdir/$app" "${bin%.*}"
+  fi
+  if [[ -r "$installdir/requirements.txt" ]]; then
+    result=$(cd "$installdir";pip3 install -q -r requirements.txt 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Python requirements"
+  fi
+  if [[ -r "$installdir/setup.py" ]]; then
+    result=$(cd "$installdir";python3 setup.py -q install 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Installing setup.py"
   fi
 }
 
@@ -234,27 +213,12 @@ checklist_report() {
         if type -t $depends ${script##*/} >/dev/null; then
           status='Ok'
         fi
-        echo "${tool^} [$status]"
+        echo "${tool^^} [$status]"
       fi
     fi
   done | column | sed "s/\[Ok\]/[${CFGBGreen}Ok${CReset}]/g;s/\[Fail\]/[${CFGBRed}Fail${CReset}]/g"
 }
 
-shopt -s extglob
-dirname=${BASH_SOURCE%/*}
-basename=${0##*/}
-
-export srcdir=${srcdir:-/usr/local}
-export bindir=${bindir:-$srcdir/bin}
-export GOBIN=$bindir GOPATH=$bindir
-workdir="$srcdir/DonatoReis/arno"
-logfile="$workdir/${basename%.*}.log"
-logerr="$workdir/${basename%.*}.err"
-inifile="$workdir/package.ini"
-GIT_OPT='-q'
-[[ $APP_DEBUG ]] && GIT_OPT=
-
-banner
 load_ansi_colors
 while [[ $1 ]]; do
   case $1 in
@@ -272,7 +236,7 @@ while [[ $1 ]]; do
       ;;
     -l|--list)
       [[ -f "$inifile" ]] && pkgs=$(grep -oP '(?<=^\[)[^]]+' $inifile)
-      echo "  Uso: ./$basename" $pkgs
+      echo "  Uso:./$basename" $pkgs
       exit 0
       ;;
     -c|--check)
@@ -285,8 +249,8 @@ while [[ $1 ]]; do
       ;;
   esac
 done
-if [[ 0 != $EUID ]]; then
-  printf 'Must run as root!!!\n$ sudo ./%s\n' "$basename"
+if [[ 0!= $EUID ]]; then
+  printf 'Must run as root!!!\n$ sudo./%s\n' "$basename"
   exit 1
 fi
 
@@ -313,7 +277,7 @@ for tool in ${selection,,}; do
       print_message "Installing ${tool^}"
       [[ $url ]] && git_install "$url" "$script"
       [[ $post_install ]] && {
-        result=$(bash -c "$post_install" 2>>$logerr >>$logfile) | progressbar -s normal -m "${tool^}: Installation"
+        result=$("$post_install" 2>>$logerr >>$logfile) | progressbar -s normal -m "${tool^}: Installation"
       }
     fi
   fi
