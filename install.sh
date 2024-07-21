@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly version='1.0.17a'
+readonly version='1.0.17b'
 
 load_ansi_colors() {
   # Use tput to set colors
@@ -47,7 +47,7 @@ progressbar() {
 
 banner() {
   lolcat "
-  ________             ___.          .__  .__   
+  ________             ___.         .__ .__   
  /  _____/ __ __  _____\_ |__ _____  |  | |  |  
 /   \  ___|  |  \/     \| __ \\__  \ |  | |  |  
 \    \_\  \  |  /  Y Y  \ \_\ \/ __ \|  |_|  |__
@@ -180,15 +180,15 @@ git_install() {
       [[ -f "$installdir/$app" ]] && chmod +x "$installdir/$app"
       bin="$bindir/${app##*/}"
       ln -sf "$installdir/$app" "$bin"
-        ln -sf "$installdir/$app" "${bin%.*}"
+      ln -sf "$installdir/$app" "${bin%.*}"
+    fi
+    if [[ -r "$installdir/requirements.txt" ]]; then
+      result=$(cd "$installdir";pip3 install -q -r requirements.txt 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Python requirements"
+    fi
+    if [[ -r "$installdir/setup.py" ]]; then
+      result=$(cd "$installdir";python3 setup.py -q install 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Installing setup.py"
+    fi
   fi
-  if [[ -r "$installdir/requirements.txt" ]]; then
-    result=$(cd "$installdir";pip3 install -q -r requirements.txt 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Python requirements"
-  fi
-  if [[ -r "$installdir/setup.py" ]]; then
-    result=$(cd "$installdir";python3 setup.py -q install 2>>$logerr >>$logfile) | progressbar -s fast -m "${repo##*/}: Installing setup.py"
-  fi
-}
 
 checklist_report() {
   CFGBRed=$'\e[91m'
@@ -219,6 +219,7 @@ checklist_report() {
 }
 
 load_ansi_colors
+
 while [[ $1 ]]; do
   case $1 in
     -h|--help|help)
@@ -248,6 +249,7 @@ while [[ $1 ]]; do
       ;;
   esac
 done
+
 if [[ 0!= $EUID ]]; then
   printf 'Must run as root!!!\n$ sudo./%s\n' "$basename"
   exit 1
